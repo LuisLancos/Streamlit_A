@@ -53,11 +53,13 @@ def main():
     # Initialize OpenAI client
     client = init_openai_client()
 
-    # Session state for thread and file IDs management
+    # Session state for thread, file IDs, and conversation log management
     if 'thread_id' not in st.session_state:
         st.session_state['thread_id'] = create_thread(client)
     if 'file_ids' not in st.session_state:
         st.session_state['file_ids'] = []
+    if 'conversation_log' not in st.session_state:
+        st.session_state['conversation_log'] = []
 
     # File uploader
     uploaded_file = st.file_uploader("Upload a file", type=['pdf', 'txt', 'docx'])
@@ -76,17 +78,27 @@ def main():
     # Send Query
     if st.button('Send Query'):
         if user_query:
+            # Append user query to conversation log
+            st.session_state['conversation_log'].append(f"You: {user_query}")
             add_message_to_thread(client, st.session_state['thread_id'], user_query)
             response = run_assistant_and_get_response(client, assistant_id, st.session_state['thread_id'])
             if response:
+                # Append assistant response to conversation log
+                st.session_state['conversation_log'].append(f"Assistant: {response[0]}")
                 st.write("Assistant's Response:", response[0])
             else:
                 st.write("Assistant's Response: No response received.")
+
+    # Display conversation log
+    st.write("Conversation Log:")
+    for message in st.session_state['conversation_log']:
+        st.text(message)
 
     # Start New Thread
     if st.button('Start New Thread'):
         st.session_state['thread_id'] = create_thread(client)
         st.session_state['file_ids'] = []
+        st.session_state['conversation_log'] = []
 
 # Run the Streamlit app
 if __name__ == "__main__":

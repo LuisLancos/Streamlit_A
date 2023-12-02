@@ -111,4 +111,5 @@ def main():
         st.session_state['conversation_log'] = []
 
 # Run the Streamlit app
-if __name__ == "__main
+if __name__ == "__main__":
+    main()

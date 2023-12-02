@@ -45,13 +45,17 @@ def get_thread_responses(client, thread_id):
 
 # Run the assistant and get a response
 def run_assistant_and_get_response(client, thread_id):
-    run = client.beta.threads.runs.create(assistant_id=ASSISTANT_ID, thread_id=thread_id)
-    while run.status not in ['completed', 'failed']:
-        run = client.beta.threads.runs.retrieve(run_id=run.id, thread_id=thread_id)
-    if run.status == 'completed':
-        return get_thread_responses(client, thread_id)
-    else:
-        return ["No response or run failed"]
+    try:
+        run = client.beta.threads.runs.create(assistant_id=ASSISTANT_ID, thread_id=thread_id)
+        while run.status not in ['completed', 'failed']:
+            run = client.beta.threads.runs.retrieve(run_id=run.id, thread_id=thread_id)
+        if run.status == 'completed':
+            return get_thread_responses(client, thread_id)[-1]  # Fetch the latest response
+        else:
+            return "No response or run failed"
+    except Exception as e:
+        st.error(f"Error in getting response: {e}")
+        return None
 
 # Streamlit app main function
 def main():
@@ -90,8 +94,8 @@ def main():
             response = run_assistant_and_get_response(client, st.session_state['thread_id'])
             if response:
                 # Append assistant response to conversation log
-                st.session_state['conversation_log'].append(f"Assistant: {response[0]}")
-                st.write("Assistant's Response:", response[0])
+                st.session_state['conversation_log'].append(f"Assistant: {response}")
+                st.write("Assistant's Response:", response)
             else:
                 st.write("Assistant's Response: No response received.")
 
@@ -107,5 +111,4 @@ def main():
         st.session_state['conversation_log'] = []
 
 # Run the Streamlit app
-if __name__ == "__main__":
-    main()
+if __name__ == "__main

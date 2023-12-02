@@ -9,11 +9,57 @@ def init_openai_client():
     openai_api_key = st.secrets["OPENAI_API_KEY"]
     return openai.Client(api_key=openai_api_key)
 
-# [functions: upload_file, update_assistant_with_files, create_thread, add_message_to_thread, get_thread_responses, run_assistant_and_get_response]
+# Upload a file to OpenAI and return its ID
+def upload_file(client, file):
+    try:
+        uploaded_file = client.files.create(file=file, purpose='assistants')
+        return uploaded_file.id
+    except Exception as e:
+        st.error(f"Failed to upload file: {e}")
+        return None
+
+# Update assistant with file IDs
+def update_assistant_with_files(client, file_ids):
+    try:
+        client.beta.assistants.update(ASSISTANT_ID, file_ids=file_ids)
+    except Exception as e:
+        st.error(f"Failed to update assistant with file: {e}")
+
+# Create a new thread
+def create_thread(client):
+    try:
+        thread = client.beta.threads.create()
+        return thread.id
+    except Exception as e:
+        st.error(f"Failed to create thread: {e}")
+        return None
+
+# Add a message to a thread
+def add_message_to_thread(client, thread_id, message_content):
+    client.beta.threads.messages.create(thread_id=thread_id, role="user", content=message_content)
+
+# Get responses from a thread
+def get_thread_responses(client, thread_id):
+    messages = client.beta.threads.messages.list(thread_id=thread_id, order="asc")
+    return [msg.content[0].text.value for msg in messages.data if msg.role == 'assistant']
+
+# Run the assistant and get a response
+def run_assistant_and_get_response(client, thread_id):
+    try:
+        run = client.beta.threads.runs.create(assistant_id=ASSISTANT_ID, thread_id=thread_id)
+        while run.status not in ['completed', 'failed']:
+            run = client.beta.threads.runs.retrieve(run_id=run.id, thread_id=thread_id)
+        if run.status == 'completed':
+            return get_thread_responses(client, thread_id)[-1]  # Fetch the latest response
+        else:
+            return "No response or run failed"
+    except Exception as e:
+        st.error(f"Error in getting response: {e}")
+        return None
 
 # Streamlit app main function
 def main():
-    st.title("Gliding Technical Advisor")
+    st.title("OpenAI Chatbot with File Upload")
 
     # Initialize OpenAI client
     client = init_openai_client()
@@ -21,6 +67,14 @@ def main():
     # Initialize session state for conversation log
     if 'conversation_log' not in st.session_state:
         st.session_state['conversation_log'] = []
+
+    # File uploader
+    uploaded_file = st.file_uploader("Upload a file", type=['pdf', 'txt', 'docx'])
+    if uploaded_file is not None:
+        file_id = upload_file(client, uploaded_file)
+        if file_id:
+            st.success("File uploaded successfully.")
+            update_assistant_with_files(client, [file_id])
 
     # Text input for user query
     user_query = st.text_input("Enter your query:")
@@ -30,27 +84,19 @@ def main():
         if user_query:
             add_message_to_thread(client, st.session_state['thread_id'], user_query)
             response = run_assistant_and_get_response(client, st.session_state['thread_id'])
-            conversation_entry = f"You: {user_query}\nAssistant: {response}\n" if response else f"You: {user_query}\nAssistant: No response received.\n"
-            # Insert new conversation at the beginning
-            st.session_state['conversation_log'].insert(0, conversation_entry)
+            if response:
+                st.session_state['conversation_log'].append(f"You: {user_query}\nAssistant: {response}\n")
+            else:
+                st.session_state['conversation_log'].append(f"You: {user_query}\nAssistant: No response received.\n")
 
     # Display the conversation log in a single, scrollable text area
     full_conversation = "".join(st.session_state['conversation_log'])
     st.text_area("Conversation", full_conversation, height=300, key="conversation_area")
 
-    # Start New Conversation Button
-    if st.button('Start New Conversation'):
+    # Start New Thread
+    if st.button('Start New Thread'):
         st.session_state['thread_id'] = create_thread(client)
         st.session_state['conversation_log'] = []
-
-    # File uploader positioned at the bottom
-    st.subheader("Upload a File")
-    uploaded_file = st.file_uploader("", type=['pdf', 'txt', 'docx'])
-    if uploaded_file is not None:
-        file_id = upload_file(client, uploaded_file)
-        if file_id:
-            st.success("File uploaded successfully.")
-            update_assistant_with_files(client, [file_id])
 
 # Run the Streamlit app
 if __name__ == "__main__":

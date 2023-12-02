@@ -1,6 +1,9 @@
 import streamlit as st
 import openai
 
+# Set the OpenAI Assistant ID (replace with your actual assistant ID)
+ASSISTANT_ID = "your_assistant_id_here"
+
 # Initialize OpenAI client with API key from Streamlit secrets
 def init_openai_client():
     openai_api_key = st.secrets["OPENAI_API_KEY"]
@@ -16,9 +19,9 @@ def upload_file(client, file):
         return None
 
 # Update assistant with file IDs
-def update_assistant_with_files(client, assistant_id, file_ids):
+def update_assistant_with_files(client, file_ids):
     try:
-        client.beta.assistants.update(assistant_id, file_ids=file_ids)
+        client.beta.assistants.update(ASSISTANT_ID, file_ids=file_ids)
     except Exception as e:
         st.error(f"Failed to update assistant with file: {e}")
 
@@ -37,8 +40,8 @@ def get_thread_responses(client, thread_id):
     return [msg.content[0].text.value for msg in messages.data if msg.role == 'assistant']
 
 # Run the assistant and get a response
-def run_assistant_and_get_response(client, assistant_id, thread_id):
-    run = client.beta.threads.runs.create(assistant_id=assistant_id, thread_id=thread_id)
+def run_assistant_and_get_response(client, thread_id):
+    run = client.beta.threads.runs.create(assistant_id=ASSISTANT_ID, thread_id=thread_id)
     while run.status not in ['completed', 'failed']:
         run = client.beta.threads.runs.retrieve(run_id=run.id, thread_id=thread_id)
     if run.status == 'completed':
@@ -69,8 +72,7 @@ def main():
             st.session_state['file_ids'].append(file_id)
             st.success("File uploaded successfully.")
             # Update the assistant with the new file ID
-            assistant_id = "asst_axrsu71yTNAXbzyf1Nv1EJ59"  # Replace with your actual assistant ID
-            update_assistant_with_files(client, assistant_id, st.session_state['file_ids'])
+            update_assistant_with_files(client, st.session_state['file_ids'])
 
     # Text input for user query
     user_query = st.text_input("Enter your query:")
@@ -81,7 +83,7 @@ def main():
             # Append user query to conversation log
             st.session_state['conversation_log'].append(f"You: {user_query}")
             add_message_to_thread(client, st.session_state['thread_id'], user_query)
-            response = run_assistant_and_get_response(client, assistant_id, st.session_state['thread_id'])
+            response = run_assistant_and_get_response(client, st.session_state['thread_id'])
             if response:
                 # Append assistant response to conversation log
                 st.session_state['conversation_log'].append(f"Assistant: {response[0]}")

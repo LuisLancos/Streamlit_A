@@ -27,8 +27,12 @@ def update_assistant_with_files(client, file_ids):
 
 # Create a new thread
 def create_thread(client):
-    thread = client.beta.threads.create()
-    return thread.id
+    try:
+        thread = client.beta.threads.create()
+        return thread.id
+    except Exception as e:
+        st.error(f"Failed to create thread: {e}")
+        return None
 
 # Add a message to a thread
 def add_message_to_thread(client, thread_id, message_content):
@@ -57,11 +61,9 @@ def main():
     client = init_openai_client()
 
     # Session state for thread, file IDs, and conversation log management
-    if 'thread_id' not in st.session_state:
+    if 'thread_id' not in st.session_state or 'file_ids' not in st.session_state or 'conversation_log' not in st.session_state:
         st.session_state['thread_id'] = create_thread(client)
-    if 'file_ids' not in st.session_state:
         st.session_state['file_ids'] = []
-    if 'conversation_log' not in st.session_state:
         st.session_state['conversation_log'] = []
 
     # File uploader
@@ -84,7 +86,7 @@ def main():
             st.session_state['conversation_log'].append(f"You: {user_query}")
             add_message_to_thread(client, st.session_state['thread_id'], user_query)
             response = run_assistant_and_get_response(client, st.session_state['thread_id'])
-            if response:
+            if response and response[0]:
                 # Append assistant response to conversation log
                 st.session_state['conversation_log'].append(f"Assistant: {response[0]}")
                 st.write("Assistant's Response:", response[0])

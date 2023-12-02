@@ -15,6 +15,13 @@ def upload_file(client, file):
         st.error(f"Failed to upload file: {e}")
         return None
 
+# Update assistant with file IDs
+def update_assistant_with_files(client, assistant_id, file_ids):
+    try:
+        client.beta.assistants.update(assistant_id, file_ids=file_ids)
+    except Exception as e:
+        st.error(f"Failed to update assistant with file: {e}")
+
 # Create a new thread
 def create_thread(client):
     thread = client.beta.threads.create()
@@ -59,6 +66,9 @@ def main():
         if file_id:
             st.session_state['file_ids'].append(file_id)
             st.success("File uploaded successfully.")
+            # Update the assistant with the new file ID
+            assistant_id = "asst_axrsu71yTNAXbzyf1Nv1EJ59"  # Replace with your actual assistant ID
+            update_assistant_with_files(client, assistant_id, st.session_state['file_ids'])
 
     # Text input for user query
     user_query = st.text_input("Enter your query:")
@@ -66,7 +76,6 @@ def main():
     # Send Query
     if st.button('Send Query'):
         if user_query:
-            assistant_id = "asst_axrsu71yTNAXbzyf1Nv1EJ59"  # Replace with your actual assistant ID
             add_message_to_thread(client, st.session_state['thread_id'], user_query)
             response = run_assistant_and_get_response(client, assistant_id, st.session_state['thread_id'])
             if response:

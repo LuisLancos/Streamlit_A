@@ -64,22 +64,17 @@ def main():
     # Initialize OpenAI client
     client = init_openai_client()
 
-    # Initialize session state if not already done
-    if 'thread_id' not in st.session_state:
-        st.session_state['thread_id'] = create_thread(client)
-    if 'file_ids' not in st.session_state:
-        st.session_state['file_ids'] = []
-    if 'response_area' not in st.session_state:
-        st.session_state['response_area'] = []
+    # Initialize session state for conversation log
+    if 'conversation_log' not in st.session_state:
+        st.session_state['conversation_log'] = []
 
     # File uploader
     uploaded_file = st.file_uploader("Upload a file", type=['pdf', 'txt', 'docx'])
     if uploaded_file is not None:
         file_id = upload_file(client, uploaded_file)
         if file_id:
-            st.session_state['file_ids'].append(file_id)
             st.success("File uploaded successfully.")
-            update_assistant_with_files(client, st.session_state['file_ids'])
+            update_assistant_with_files(client, [file_id])
 
     # Text input for user query
     user_query = st.text_input("Enter your query:")
@@ -90,20 +85,18 @@ def main():
             add_message_to_thread(client, st.session_state['thread_id'], user_query)
             response = run_assistant_and_get_response(client, st.session_state['thread_id'])
             if response:
-                st.session_state['response_area'].append(f"You: {user_query}\nAssistant: {response}")
+                st.session_state['conversation_log'].append(f"You: {user_query}\nAssistant: {response}\n")
             else:
-                st.session_state['response_area'].append(f"You: {user_query}\nAssistant: No response received.")
+                st.session_state['conversation_log'].append(f"You: {user_query}\nAssistant: No response received.\n")
 
-    # Display the response area
-    with st.container():
-        for message in st.session_state['response_area']:
-            st.text_area("", message, height=100, key=message[:30])  # Unique key for each message
+    # Display the conversation log in a single, scrollable text area
+    full_conversation = "".join(st.session_state['conversation_log'])
+    st.text_area("Conversation", full_conversation, height=300, key="conversation_area")
 
     # Start New Thread
     if st.button('Start New Thread'):
         st.session_state['thread_id'] = create_thread(client)
-        st.session_state['file_ids'] = []
-        st.session_state['response_area'] = []
+        st.session_state['conversation_log'] = []
 
 # Run the Streamlit app
 if __name__ == "__main__":

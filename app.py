@@ -15,11 +15,11 @@ def init_openai_client():
 def main():
     st.title("Gliding Technical Advisor")
 
-    # Initialize OpenAI client
+    # Initialize OpenAI client at the start of main
     client = init_openai_client()
 
     # Initialize session state for thread ID and conversation log
-    if 'thread_id' not in st.session_state:
+    if 'thread_id' not in st.session_state or st.session_state['thread_id'] is None:
         st.session_state['thread_id'] = create_thread(client)
     if 'conversation_log' not in st.session_state:
         st.session_state['conversation_log'] = []
@@ -55,6 +55,4 @@ def main():
 
 # Run the Streamlit app
 if __name__ == "__main__":
-    main()
-
     main()

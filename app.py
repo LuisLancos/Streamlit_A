@@ -15,12 +15,10 @@ def init_openai_client():
 def main():
     st.title("Gliding Technical Advisor")
 
-    # Initialize OpenAI client at the start of main
+    # Initialize OpenAI client
     client = init_openai_client()
 
-    # Initialize session state for thread ID and conversation log
-    if 'thread_id' not in st.session_state or st.session_state['thread_id'] is None:
-        st.session_state['thread_id'] = create_thread(client)
+    # Initialize session state for conversation log
     if 'conversation_log' not in st.session_state:
         st.session_state['conversation_log'] = []
 
@@ -29,11 +27,13 @@ def main():
 
     # Send Query
     if st.button('Send Query'):
-        if user_query and st.session_state['thread_id']:
+        if user_query:
             add_message_to_thread(client, st.session_state['thread_id'], user_query)
             response = run_assistant_and_get_response(client, st.session_state['thread_id'])
-            conversation_entry = f"You: {user_query}\nAssistant: {response}\n" if response else f"You: {user_query}\nAssistant: No response received.\n"
-            st.session_state['conversation_log'].insert(0, conversation_entry)
+            if response:
+                st.session_state['conversation_log'].append(f"You: {user_query}\nAssistant: {response}\n")
+            else:
+                st.session_state['conversation_log'].append(f"You: {user_query}\nAssistant: No response received.\n")
 
     # Display the conversation log in a single, scrollable text area
     full_conversation = "".join(st.session_state['conversation_log'])

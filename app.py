@@ -1,5 +1,3 @@
-working version of streamlit
-
 import streamlit as st
 import openai
 
